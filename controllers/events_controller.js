@@ -1,16 +1,16 @@
 // DEPENDENCIES 
 const events = require('express').Router()
 const db = require('../models')
-const { Event } = db
+const { Event, Stage, SetTime, MeetGreet, Band } = db
 const { Op } = require('sequelize')
 
 // FIND ALL EVENTS
-events.get('/', async (req,res) => {
+events.get('/', async (req, res) => {
     try {
         const foundEvents = await Event.findAll({
-            order: [ [ 'date', 'ASC' ] ],
+            order: [['date', 'ASC']],
             where: {
-                name: { [Op.like]: `%${req.query.name ? req.query.name : ''}%`}
+                name: { [Op.like]: `%${req.query.name ? req.query.name : ''}%` }
             },
             // pagination
             offset: 10,
@@ -23,10 +23,41 @@ events.get('/', async (req,res) => {
 })
 
 // FIND A SPECIFIC EVENT
-events.get('/:id', async (req,res) => {
+events.get('/:name', async (req, res) => {
     try {
         const foundEvent = await Event.findOne({
-            where: { event_id: req.params.id }
+            where: { name: req.params.name },
+            include: [
+                {
+                    model: MeetGreet,
+                    as: "meet_greets",
+                    attributes: { exclude: ["event_id", "band_id"] },
+                    include: {
+                        model: Band,
+                        as: "band"
+                    }
+                },
+                {
+                    model: SetTime,
+                    as: "set_times",
+                    attributes: { exclude: ["event_id", "stage_id", "band_id"] },
+                    include: [
+                        {
+                            model: Band,
+                            as: "band"
+                        },
+                        {
+                            model: Stage,
+                            as: "stage"
+                        }
+                    ]
+                },
+                {
+                    model: Stage,
+                    as: "stages",
+                    through: { attributes: [] }
+                }
+            ]
         })
         res.status(200).json(foundEvent)
     } catch (err) {
@@ -35,7 +66,7 @@ events.get('/:id', async (req,res) => {
 })
 
 // CREATE AN EVENT
-events.post('/', async (req,res) => {
+events.post('/', async (req, res) => {
     try {
         const newEvent = await Event.create(req.body)
         res.status(200).json({
@@ -48,7 +79,7 @@ events.post('/', async (req,res) => {
 })
 
 // UPDATE AN EVENT
-events.put('/:id', async (req,res) => {
+events.put('/:id', async (req, res) => {
     try {
         const updatedEvents = await Event.update(req.body, {
             where: {
@@ -64,7 +95,7 @@ events.put('/:id', async (req,res) => {
 })
 
 // DELETE AN EVENT
-events.delete('/:id', async (req,res) => {
+events.delete('/:id', async (req, res) => {
     try {
         const deletedEvents = await Event.destroy({
             where: {
